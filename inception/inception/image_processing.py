@@ -218,48 +218,52 @@ def distort_image(image, height, width, bbox, thread_id=0, scope=None):
     # the coordinates are ordered [ymin, xmin, ymax, xmax].
 
     # Display the bounding box in the first thread only.
-    if not thread_id:
-      image_with_box = tf.image.draw_bounding_boxes(tf.expand_dims(image, 0),
-                                                    bbox)
-      tf.image_summary('image_with_bounding_boxes', image_with_box)
+    #if not thread_id:
+    #  image_with_box = tf.image.draw_bounding_boxes(tf.expand_dims(image, 0),
+    #                                                bbox)
+    #  tf.image_summary('image_with_bounding_boxes', image_with_box)
 
-  # A large fraction of image datasets contain a human-annotated bounding
-  # box delineating the region of the image containing the object of interest.
-  # We choose to create a new bounding box for the object which is a randomly
-  # distorted version of the human-annotated bounding box that obeys an allowed
-  # range of aspect ratios, sizes and overlap with the human-annotated
-  # bounding box. If no box is supplied, then we assume the bounding box is
-  # the entire image.
-    sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(
-        tf.shape(image),
-        bounding_boxes=bbox,
-        min_object_covered=0.1,
-        aspect_ratio_range=[0.75, 1.33],
-        area_range=[0.05, 1.0],
-        max_attempts=100,
-        use_image_if_no_bounding_boxes=True)
-    bbox_begin, bbox_size, distort_bbox = sample_distorted_bounding_box
-    if not thread_id:
-      image_with_distorted_box = tf.image.draw_bounding_boxes(
-          tf.expand_dims(image, 0), distort_bbox)
-      tf.image_summary('images_with_distorted_bounding_box',
-                       image_with_distorted_box)
+    ## A large fraction of image datasets contain a human-annotated bounding
+    ## box delineating the region of the image containing the object of interest.
+    ## We choose to create a new bounding box for the object which is a randomly
+    ## distorted version of the human-annotated bounding box that obeys an allowed
+    ## range of aspect ratios, sizes and overlap with the human-annotated
+    ## bounding box. If no box is supplied, then we assume the bounding box is
+    ## the entire image.
+    #sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(
+    #    tf.shape(image),
+    #    bounding_boxes=bbox,
+    #    min_object_covered=0.1,
+    #    aspect_ratio_range=[0.75, 1.33],
+    #    area_range=[0.05, 1.0],
+    #    max_attempts=100,
+    #    use_image_if_no_bounding_boxes=True)
+    #bbox_begin, bbox_size, distort_bbox = sample_distorted_bounding_box
+    #if not thread_id:
+    #  image_with_distorted_box = tf.image.draw_bounding_boxes(
+    #      tf.expand_dims(image, 0), distort_bbox)
+    #  tf.image_summary('images_with_distorted_bounding_box',
+    #                   image_with_distorted_box)
 
     # Crop the image to the specified bounding box.
-    distorted_image = tf.slice(image, bbox_begin, bbox_size)
+    #distorted_image = tf.slice(image, bbox_begin, bbox_size)
 
     # This resizing operation may distort the images because the aspect
     # ratio is not respected. We select a resize method in a round robin
     # fashion based on the thread number.
     # Note that ResizeMethod contains 4 enumerated resizing methods.
     resize_method = thread_id % 4
-    distorted_image = tf.image.resize_images(distorted_image, height, width,
-                                             resize_method)
+    #distorted_image = tf.image.resize_images(distorted_image, height, width,
+    #                                         resize_method)
     # Restore the shape since the dynamic slice based upon the bbox_size loses
     # the third dimension.
+    distorted_image = image
     distorted_image.set_shape([height, width, 3])
+    #if not thread_id:
+    #  tf.image_summary('cropped_resized_image',
+    #                   tf.expand_dims(distorted_image, 0))
     if not thread_id:
-      tf.image_summary('cropped_resized_image',
+      tf.image_summary('input_image',
                        tf.expand_dims(distorted_image, 0))
 
     # Randomly flip the image horizontally.
@@ -289,11 +293,9 @@ def eval_image(image, height, width, scope=None):
     # Crop the central region of the image with an area containing 87.5% of
     # the original image.
     image = tf.image.central_crop(image, central_fraction=0.875)
-
     # Resize the image to the original height and width.
     image = tf.expand_dims(image, 0)
-    image = tf.image.resize_bilinear(image, [height, width],
-                                     align_corners=False)
+    image = tf.image.resize_bilinear(image, [height, width], align_corners=False)
     image = tf.squeeze(image, [0])
     return image
 
@@ -325,7 +327,8 @@ def image_preprocessing(image_buffer, bbox, train, thread_id=0):
   if train:
     image = distort_image(image, height, width, bbox, thread_id)
   else:
-    image = eval_image(image, height, width)
+    #image = eval_image(image, height, width)
+    image = image
 
   # Finally, rescale to [-1,1] instead of [0, 1)
   image = tf.sub(image, 0.5)
